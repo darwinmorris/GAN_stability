@@ -4,7 +4,7 @@ from torch.nn import functional as F
 import torch.utils.data
 import torch.utils.data.distributed
 from torch import autograd
-
+import numpy
 
 class Trainer(object):
     def __init__(self, generator, discriminator, g_optimizer, d_optimizer,
@@ -17,8 +17,13 @@ class Trainer(object):
         self.gan_type = gan_type
         self.reg_type = reg_type
         self.reg_param = reg_param
+        self.label_dict = {}
+        self.label_dict[0] = [1., 1., 0., 0.]
+        self.label_dict[1] = [1., 0., 0., 0.]
+        self.label_dict[2] = [0., 1., 0., 0.]
+        self.label_dict[3] = [0., 0., 0., 0.]
 
-    def generator_trainstep(self, y, z):
+    def generator_trainstep(self, y, z, lab):
         assert(y.size(0) == z.size(0))
         toggle_grad(self.generator, True)
         toggle_grad(self.discriminator, False)
@@ -27,15 +32,17 @@ class Trainer(object):
         self.g_optimizer.zero_grad()
 
         x_fake = self.generator(z, y)
-        d_fake = self.discriminator(x_fake, y)
-        gloss = self.compute_loss(d_fake, 1)
+        d_fake, d_fake_aux = self.discriminator(x_fake, lab)
+        gloss = self.compute_loss(d_fake, d_fake_aux, 1)
+        gloss_aux = self.compute_aux_loss(d_fake_aux, lab)
+        gloss = gloss + gloss_aux
         gloss.backward()
 
         self.g_optimizer.step()
 
         return gloss.item()
 
-    def discriminator_trainstep(self, x_real, y, z):
+    def discriminator_trainstep(self, x_real, y, z, lab):
         toggle_grad(self.generator, False)
         toggle_grad(self.discriminator, True)
         self.generator.train()
@@ -45,8 +52,11 @@ class Trainer(object):
         # On real data
         x_real.requires_grad_()
 
-        d_real = self.discriminator(x_real, y)
-        dloss_real = self.compute_loss(d_real, 1)
+        d_real, d_real_aux = self.discriminator(x_real, lab)
+
+        dloss_real = self.compute_loss(d_real, d_real_aux, 1) #1 is for real
+        dloss_real_aux = self.compute_aux_loss(d_real_aux, lab)
+        dloss_real = dloss_real + dloss_real_aux
 
         if self.reg_type == 'real' or self.reg_type == 'real_fake':
             dloss_real.backward(retain_graph=True)
@@ -60,9 +70,12 @@ class Trainer(object):
             x_fake = self.generator(z, y)
 
         x_fake.requires_grad_()
-        d_fake = self.discriminator(x_fake, y)
-        dloss_fake = self.compute_loss(d_fake, 0)
+        d_fake, d_fake_aux = self.discriminator(x_fake, lab)
+        dloss_fake = self.compute_loss(d_fake, d_fake_aux, 0) #0 is for fake
+        dloss_fake_aux = self.compute_aux_loss(d_fake_aux, lab)
+        dloss_fake = dloss_fake + dloss_fake_aux
 
+        print(self.reg_type)
         if self.reg_type == 'fake' or self.reg_type == 'real_fake':
             dloss_fake.backward(retain_graph=True)
             reg = self.reg_param * compute_grad2(d_fake, x_fake).mean()
@@ -87,17 +100,29 @@ class Trainer(object):
         if self.reg_type == 'none':
             reg = torch.tensor(0.)
 
-        return dloss.item(), reg.item()
+        return dloss.item(), reg.item(), dloss_fake_aux.item(), dloss_real_aux.item(), dloss_fake.item()
 
-    def compute_loss(self, d_out, target):
+    def compute_aux_loss(self, d_out_aux, labels):
+        # encoding_arr = [self.label_dict[x] for x in labels.cpu().detach().numpy()]
+        # encoding_tens = torch.from_numpy(numpy.array(encoding_arr))
+        # device = torch.device("cuda:0")
+        # encoding_tens = encoding_tens.to(device)
+        targets = labels
+        loss = F.binary_cross_entropy_with_logits(d_out_aux, targets)
+
+        return loss
+
+
+    def compute_loss(self, d_out, d_out_aux, target):
+
         targets = d_out.new_full(size=d_out.size(), fill_value=target)
-
         if self.gan_type == 'standard':
             loss = F.binary_cross_entropy_with_logits(d_out, targets)
         elif self.gan_type == 'wgan':
             loss = (2*target - 1) * d_out.mean()
         else:
             raise NotImplementedError
+
 
         return loss
 
@@ -107,7 +132,7 @@ class Trainer(object):
         x_interp = (1 - eps) * x_real + eps * x_fake
         x_interp = x_interp.detach()
         x_interp.requires_grad_()
-        d_out = self.discriminator(x_interp, y)
+        d_out, d_out_aux = self.discriminator(x_interp, y)
 
         reg = (compute_grad2(d_out, x_interp).sqrt() - center).pow(2).mean()
 
@@ -142,3 +167,4 @@ def update_average(model_tgt, model_src, beta):
         p_src = param_dict_src[p_name]
         assert(p_src is not p_tgt)
         p_tgt.copy_(beta*p_tgt + (1. - beta)*p_src)
+

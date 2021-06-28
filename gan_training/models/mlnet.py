@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Generator(nn.Module):
-    def __init__(self, z_dim, nlabels, size, embed_size=256, nfilter=64, nfilter_max=512, **kwargs):
+    def __init__(self, z_dim, nlabels, labsize, size, embed_size=256, nfilter=64, nfilter_max=512, **kwargs):
         super().__init__()
         s0 = self.s0 = 4
         nf = self.nf = nfilter
@@ -49,7 +49,6 @@ class Generator(nn.Module):
             yembed = y
 
         yembed = yembed / torch.norm(yembed, p=2, dim=1, keepdim=True)
-
         yz = torch.cat([z, yembed], dim=1)
         out = self.fc(yz)
         out = out.view(batch_size, self.nf0, self.s0, self.s0)
@@ -63,7 +62,7 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, z_dim, nlabels, size, embed_size=256, nfilter=64, nfilter_max=1024):
+    def __init__(self, z_dim, nlabels, labsize, size, embed_size=256, nfilter=64, nfilter_max=1024):
         super().__init__()
         self.embed_size = embed_size
         s0 = self.s0 = 4
@@ -88,23 +87,24 @@ class Discriminator(nn.Module):
 
         self.conv_img = nn.Conv2d(3, 1*nf, 3, padding=1)
         self.resnet = nn.Sequential(*blocks)
-        self.fc = nn.Linear(self.nf0*s0*s0, nlabels)
+        self.fc = nn.Linear(self.nf0*s0*s0, labsize)
+        self.fc_disc = nn.Linear(self.nf0*s0*s0, 1)
 
     def forward(self, x, y):
         assert(x.size(0) == y.size(0))
         batch_size = x.size(0)
-
-        out = self.conv_img(x)
-        out = self.resnet(out)
-        out = out.view(batch_size, self.nf0*self.s0*self.s0)
-        out = self.fc(actvn(out))
-
+        out = self.conv_img(x) # image into input layer
+        out = self.resnet(out) # output from input layer into resnet
+        out = out.view(batch_size, self.nf0*self.s0*self.s0) #resphapes tensr to nf0, s0, s0 for input into fully connected
+        disc_out = self.fc_disc(actvn(out))
+        disc_out = disc_out[Variable(torch.LongTensor(range(disc_out.size(0)))), 0]
+        out = self.fc(actvn(out)) #input into this layer
+        aux_out = out
         index = Variable(torch.LongTensor(range(out.size(0))))
-        if y.is_cuda:
-            index = index.cuda()
-        out = out[index, y]
-
-        return out
+        # if y.is_cuda:
+        #     index = index.cuda()
+        # out = out[index, y]
+        return disc_out, aux_out
 
 
 class ResnetBlock(nn.Module):
@@ -145,3 +145,4 @@ class ResnetBlock(nn.Module):
 def actvn(x):
     out = F.leaky_relu(x, 2e-1)
     return out
+

@@ -3,6 +3,8 @@ import os
 from os import path
 import time
 import copy
+
+import numpy
 import torch
 from torch import nn
 from gan_training import utils
@@ -27,6 +29,8 @@ args = parser.parse_args()
 
 config = load_config(args.config, 'configs/default.yaml')
 is_cuda = (torch.cuda.is_available() and not args.no_cuda)
+
+
 
 # Short hands
 batch_size = config['training']['batch_size']
@@ -67,6 +71,24 @@ train_loader = torch.utils.data.DataLoader(
         num_workers=config['training']['nworkers'],
         shuffle=True, pin_memory=True, sampler=None, drop_last=True
 )
+print("ornothopter" , train_dataset.class_to_idx)
+real_dict = train_dataset.class_to_idx
+label_dict = {}
+label_dict[real_dict['0']] = [1., 0., 0., 0.]
+label_dict[real_dict['1']] = [0., 1., 0., 0.]
+label_dict[real_dict['2']] = [0., 0., 1., 0.]
+label_dict[real_dict['3']] = [0., 0., 0., 1.]
+label_dict[real_dict['4']] = [1., 1., 0., 0.]
+label_dict[real_dict['5']] =[1., 0., 1., 0.]
+label_dict[real_dict['6']] = [1., 0., 0., 1.]
+label_dict[real_dict['7']] = [0., 1., 1., 0.]
+label_dict[real_dict['8']] = [0., 1., 0., 1.]
+label_dict[real_dict['9']] = [0., 0., 1., 1.]
+label_dict[real_dict['10']] = [1., 1., 1., 0.]
+label_dict[real_dict['11']] = [1., 1., 0., 1.]
+label_dict[real_dict['12']] = [1., 0., 1., 1.]
+label_dict[real_dict['13']] = [0., 1., 1., 1.]
+
 
 # Number of labels
 nlabels = min(nlabels, config['data']['nlabels'])
@@ -116,8 +138,13 @@ zdist = get_zdist(config['z_dist']['type'], config['z_dist']['dim'],
 # Save for tests
 ntest = batch_size
 x_real, ytest = utils.get_nsamples(train_loader, ntest)
+
 ytest.clamp_(None, nlabels-1)
 ztest = zdist.sample((ntest,))
+# encoding_arr = [label_dict[x] for x in ytest.cpu().detach().numpy()]
+# encoding_tens = torch.from_numpy(numpy.array(encoding_arr))
+# encoding_tens = encoding_tens.to(device)
+
 utils.save_images(x_real, path.join(out_dir, 'real.png'))
 
 # Test generator
@@ -176,20 +203,22 @@ while True:
         g_lr = g_optimizer.param_groups[0]['lr']
         logger.add('learning_rates', 'discriminator', d_lr, it=it)
         logger.add('learning_rates', 'generator', g_lr, it=it)
-
+        encoding_arr = [label_dict[x] for x in y.cpu().detach().numpy()]
+        encoding_tens = torch.from_numpy(numpy.array(encoding_arr))
+        encoding_tens = encoding_tens.to(device)
         x_real, y = x_real.to(device), y.to(device)
         y.clamp_(None, nlabels-1)
-
         # Discriminator updates
         z = zdist.sample((batch_size,))
-        dloss, reg = trainer.discriminator_trainstep(x_real, y, z)
+
+        dloss, reg, fake_aux, real_aux, tot = trainer.discriminator_trainstep(x_real, y, z, encoding_tens)
         logger.add('losses', 'discriminator', dloss, it=it)
         logger.add('losses', 'regularizer', reg, it=it)
 
         # Generators updates
         if ((it + 1) % d_steps) == 0:
             z = zdist.sample((batch_size,))
-            gloss = trainer.generator_trainstep(y, z)
+            gloss = trainer.generator_trainstep(y, z, encoding_tens)
             logger.add('losses', 'generator', gloss, it=it)
 
             if config['training']['take_model_average']:
@@ -200,8 +229,8 @@ while True:
         g_loss_last = logger.get_last('losses', 'generator')
         d_loss_last = logger.get_last('losses', 'discriminator')
         d_reg_last = logger.get_last('losses', 'regularizer')
-        print('[epoch %0d, it %4d] g_loss = %.4f, d_loss = %.4f, reg=%.4f'
-              % (epoch_idx, it, g_loss_last, d_loss_last, d_reg_last))
+        print('[epoch %0d, it %4d] g_loss = %.4f, d_loss = %.4f, reg=%.4f, real=%.4f, fake=%.4f, fake=%.4f,'
+              % (epoch_idx, it, g_loss_last, d_loss_last, d_reg_last, fake_aux, real_aux, tot))
 
         # (i) Sample if necessary
         if (it % config['training']['sample_every']) == 0:
@@ -233,3 +262,4 @@ while True:
 
             if (restart_every > 0 and t0 - tstart > restart_every):
                 exit(3)
+
