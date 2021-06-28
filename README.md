@@ -1,10 +1,9 @@
 # ML-GAN
-This repository contains a modified version of the GAN presented in the paper [Which Training Methods for GANs do actually Converge?].
+This repository contains a modified version of the GAN presented in the paper [Which Training Methods for GANs do actually Converge?](https://avg.is.tuebingen.mpg.de/publications/meschedericml2018)..
 - configs for experiments can be found in ./configs
 - yaml filed can be modified for further experiments
 
 # GAN stability
-This repository contains the experiments in the supplementary material for the paper [Which Training Methods for GANs do actually Converge?](https://avg.is.tuebingen.mpg.de/publications/meschedericml2018).
 
 To cite this work, please use
 ```
