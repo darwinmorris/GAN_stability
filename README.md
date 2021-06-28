@@ -1,6 +1,6 @@
 # ML-GAN
 This repository contains a modified version of the GAN presented in the paper [Which Training Methods for GANs do actually Converge?].
-- configs for experiments can be found in /configs
+- configs for experiments can be found in ./configs
 - yaml filed can be modified for further experiments
 
 # GAN stability
