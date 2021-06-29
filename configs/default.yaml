@@ -6,6 +6,7 @@ data:
   lsun_categories_test: [bedroom_test]
   img_size: 256
   nlabels: 1
+  lp_dic: configs/two_char.json
 generator:
   name: resnet
   kwargs:

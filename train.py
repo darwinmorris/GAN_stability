@@ -41,6 +41,7 @@ inception_every = config['training']['inception_every']
 save_every = config['training']['save_every']
 backup_every = config['training']['backup_every']
 sample_nlabels = config['training']['sample_nlabels']
+lp_file = config['data']['lp_dic']
 
 out_dir = config['training']['out_dir']
 checkpoint_dir = path.join(out_dir, 'chkpts')
@@ -75,7 +76,7 @@ train_loader = torch.utils.data.DataLoader(
 
 real_dict = train_dataset.class_to_idx
 class_to_label = {}
-with open('configs/two_char.json') as f:
+with open(lp_file) as f:
     class_to_label = json.loads(f.read())
 label_dict = {}
 for key in class_to_label.keys():

@@ -5,6 +5,7 @@ data:
   img_size: 128
   nlabels: 4
   labsize: 2
+  lp_dic: configs/two_char.json
 generator:
   name: mlnet
   kwargs:
