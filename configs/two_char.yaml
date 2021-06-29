@@ -6,7 +6,7 @@ data:
   nlabels: 14
   labsize: 4
 generator:
-  name: resnet
+  name: mlnet
   kwargs:
     nfilter: 32
     nfilter_max: 512
