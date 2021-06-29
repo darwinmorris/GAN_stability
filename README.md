@@ -1,7 +1,10 @@
-# ML-GAN
+# ML-SGAN
 This repository contains a modified version of the GAN presented in the paper [Which Training Methods for GANs do actually Converge?](https://avg.is.tuebingen.mpg.de/publications/meschedericml2018)..
 - configs for experiments can be found in ./configs
-- yaml filed can be modified for further experiments
+- important configs for ML-SGAN:
+  -lp_dict is path the json dictionary of LP classes to labels
+  -labsize is the label array size
+  -nlabels is the number of classes after LP transformation
 
 # GAN stability
 
