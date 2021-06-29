@@ -19,7 +19,6 @@ def load_config(path, default_path):
 
     # Check if we should inherit from a config
     inherit_from = cfg_special.get('inherit_from')
-
     # If yes, load this config first as default
     # If no, use the default_path
     if inherit_from is not None:
@@ -64,12 +63,14 @@ def build_models(config):
     generator = Generator(
         z_dim=config['z_dist']['dim'],
         nlabels=config['data']['nlabels'],
+        labsize=config['data']['labsize'],
         size=config['data']['img_size'],
         **config['generator']['kwargs']
     )
     discriminator = Discriminator(
         config['discriminator']['name'],
         nlabels=config['data']['nlabels'],
+        labsize=config['data']['labsize'],
         size=config['data']['img_size'],
         **config['discriminator']['kwargs']
     )

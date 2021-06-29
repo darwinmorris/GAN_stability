@@ -17,11 +17,6 @@ class Trainer(object):
         self.gan_type = gan_type
         self.reg_type = reg_type
         self.reg_param = reg_param
-        self.label_dict = {}
-        self.label_dict[0] = [1., 1., 0., 0.]
-        self.label_dict[1] = [1., 0., 0., 0.]
-        self.label_dict[2] = [0., 1., 0., 0.]
-        self.label_dict[3] = [0., 0., 0., 0.]
 
     def generator_trainstep(self, y, z, lab):
         assert(y.size(0) == z.size(0))
@@ -75,7 +70,7 @@ class Trainer(object):
         dloss_fake_aux = self.compute_aux_loss(d_fake_aux, lab)
         dloss_fake = dloss_fake + dloss_fake_aux
 
-        print(self.reg_type)
+
         if self.reg_type == 'fake' or self.reg_type == 'real_fake':
             dloss_fake.backward(retain_graph=True)
             reg = self.reg_param * compute_grad2(d_fake, x_fake).mean()

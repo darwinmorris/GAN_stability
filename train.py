@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 from os import path
 import time
@@ -6,7 +7,7 @@ import copy
 
 import numpy
 import torch
-from torch import nn
+from torch import nn, long
 from gan_training import utils
 from gan_training.train import Trainer, update_average
 from gan_training.logger import Logger
@@ -71,25 +72,15 @@ train_loader = torch.utils.data.DataLoader(
         num_workers=config['training']['nworkers'],
         shuffle=True, pin_memory=True, sampler=None, drop_last=True
 )
-print("ornothopter" , train_dataset.class_to_idx)
+
 real_dict = train_dataset.class_to_idx
+class_to_label = {}
+with open('configs/two_char.json') as f:
+    class_to_label = json.loads(f.read())
 label_dict = {}
-label_dict[real_dict['0']] = [1., 0., 0., 0.]
-label_dict[real_dict['1']] = [0., 1., 0., 0.]
-label_dict[real_dict['2']] = [0., 0., 1., 0.]
-label_dict[real_dict['3']] = [0., 0., 0., 1.]
-label_dict[real_dict['4']] = [1., 1., 0., 0.]
-label_dict[real_dict['5']] =[1., 0., 1., 0.]
-label_dict[real_dict['6']] = [1., 0., 0., 1.]
-label_dict[real_dict['7']] = [0., 1., 1., 0.]
-label_dict[real_dict['8']] = [0., 1., 0., 1.]
-label_dict[real_dict['9']] = [0., 0., 1., 1.]
-label_dict[real_dict['10']] = [1., 1., 1., 0.]
-label_dict[real_dict['11']] = [1., 1., 0., 1.]
-label_dict[real_dict['12']] = [1., 0., 1., 1.]
-label_dict[real_dict['13']] = [0., 1., 1., 1.]
-
-
+for key in class_to_label.keys():
+    label_dict[real_dict[key]] = class_to_label[key]
+    print(type(class_to_label[key][0]))
 # Number of labels
 nlabels = min(nlabels, config['data']['nlabels'])
 sample_nlabels = min(nlabels, sample_nlabels)

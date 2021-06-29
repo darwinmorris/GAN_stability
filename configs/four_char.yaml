@@ -3,8 +3,8 @@ data:
   train_dir: data/cropped_input
   test_dir: /home/darwin/Desktop/Results/lable_two_final/cropped_input
   img_size: 128
-  nlabels: 4
-  labsize: 2
+  nlabels: 14
+  labsize: 4
 generator:
   name: mlnet
   kwargs:

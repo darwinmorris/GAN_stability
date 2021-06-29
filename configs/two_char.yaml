@@ -1,10 +1,10 @@
 data:
   type: image
-  train_dir: data/multi_char
-  test_dir: data/multi_char
+  train_dir: data/cropped_input
+  test_dir: data/cropped_input
   img_size: 128
-  nlabels: 14
-  labsize: 4
+  nlabels: 4
+  labsize: 2
 generator:
   name: mlnet
   kwargs:
@@ -12,7 +12,7 @@ generator:
     nfilter_max: 512
     embed_size: 128
 discriminator:
-  name: resnet
+  name: mlnet
   kwargs:
     nfilter: 32
     nfilter_max: 512
